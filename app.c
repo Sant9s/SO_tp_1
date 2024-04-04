@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
+        int files_sent = 0;
 
     // Crear pipes para comunicarse con los esclavos
     create_n_pipes(num_slaves, parent_to_slave_pipe);
@@ -46,9 +47,8 @@ int main(int argc, char *argv[]) {
     create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe);
 
     // Distribuir archivos entre los esclavos
-    int files_sent = 1;
     for (int i = 0; i < num_slaves; i++) {
-        write_pipe(parent_to_slave_pipe[i][1], argv[files_sent]);
+        write_pipe(parent_to_slave_pipe[i][1], argv[files_sent + 1]);
         files_sent++;
     }
 
