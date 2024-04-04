@@ -2,9 +2,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include "pipes.h"
 
 
-int read_pipe(int fd, char buff[]) {
+int read_pipe(int fd, char* buff) {
     int i = 0;
     char read_char[1] = {1};
 
