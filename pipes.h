@@ -2,7 +2,7 @@
 #ifndef _PIPES
 #define _PIPES
 
-int pipe_read(int fd, char *buff);
-int pipe_write(int fd, const char *buff);
+int read_pipe(int fd, char *buff);
+int write_pipe(int fd, const char *buff);
 
 #endif

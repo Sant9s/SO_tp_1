@@ -9,6 +9,7 @@
 #include <semaphore.h>
 #include <fcntl.h>
 #include <string.h>
+#include "pipes.h"
 
 #define MAX_SLAVES 5
 #define BUFFER_SIZE 100
@@ -47,11 +48,11 @@ int main(int argc, char *argv[]) {
     // Distribuir archivos entre los esclavos
     int files_sent = 1;
     for (int i = 0; i < num_slaves; i++) {
-        write(parent_to_slave_pipe[i][1], argv[files_sent], strlen(argv[files_sent]) + 1);
+        write_pipe(parent_to_slave_pipe[i][1], argv[files_sent]);
         files_sent++;
     }
 
-    // Esperar a que todos los esclavos terminen
+    // Esperar a que todos los esclavos terminen 
     for (int i = 0; i < num_slaves; i++) {
         waitpid(slave_pids[i], NULL, 0);
     }
