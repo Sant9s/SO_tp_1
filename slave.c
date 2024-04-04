@@ -6,13 +6,10 @@
 
 int main(){
     
-    // necesito recibir el path por un pipe
     char* path;
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
     char md5[MAX_MD5_SIZE + 1];     // ojo con el offset
-
-    // aca recibo el path por un pipe
 
     int continue_reading = 1;
 
@@ -32,8 +29,6 @@ int main(){
     }
 
     fgets(md5, MAX_MD5_SIZE, fp);   
-
-    // now md5 has the md5 we want the function to return
 
     md5[MAX_MD5_SIZE+1] = '\0';
 
