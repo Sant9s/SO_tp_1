@@ -10,15 +10,9 @@
 #include <fcntl.h>
 #include <string.h>
 #include "pipes.h"
+#include "utils.h"
 
-#define MAX_SLAVES 5
-#define BUFFER_SIZE 100
 
-typedef struct {
-    char filename[256];
-    char md5[33];
-    int slave_id;
-} Result;
 
 int create_n_pipes(int n, int array[][2]);
 int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
@@ -33,11 +27,11 @@ int main(int argc, char *argv[]) {
 
     // Inicializar variables y estructuras de datos necesarias
     int num_files = argc - 1;
-    int num_slaves = num_files / 10 ; // De momento usamos 5, hay que calcular la cantidad de esclavos segun la cantidad de archivos
+    int num_slaves = num_files / 10;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
-        int files_sent = 0;
+    int files_sent = 0;
 
     // Crear pipes para comunicarse con los esclavos
     create_n_pipes(num_slaves, parent_to_slave_pipe);

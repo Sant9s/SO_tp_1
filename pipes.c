@@ -14,7 +14,7 @@ int read_pipe(int fd, char* buff) {
 
         if (read_result == -1) {
             perror("read");
-            exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE); 
         }
 
         buff[i++] = read_char[0];
@@ -25,7 +25,7 @@ int read_pipe(int fd, char* buff) {
     return i;
 }
 
-int write_pipe(int fd, const char *buff) {
+int write_pipe(int fd, char *buff) {
 
     int write_result = write(fd, buff, strlen(buff) + 1);
 

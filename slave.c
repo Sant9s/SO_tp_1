@@ -1,27 +1,25 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "utils.h"
 #include "pipes.h"
+#include <string.h>
 
 
 int main(){
-    
-    char* path;
+    Result res;
+    char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
     char md5[MAX_MD5_SIZE + 1];     // ojo con el offset
 
-    int continue_reading = 1;
-
-    while(continue_reading == 1){
-        continue_reading = pipe_read(FD_READ, path);    // errors are handled by wrappers
-
-        // fijarse que no se rompa aca
+    if (read_pipe(FD_READ, path) == 0){
+        exit(1);
     }
+    
+    sprintf(command, start_command, path); // store "md5sum + path" in command
 
-    sprintf(command, start_command, path);                        // store "md5sum + path" in command
-
-    FILE *fp = popen(command, "r");                     // r means read
+    FILE *fp = popen(command, "r"); // r means read
 
     if(fp == NULL){
         perror("popen error");
@@ -30,11 +28,15 @@ int main(){
 
     fgets(md5, MAX_MD5_SIZE, fp);   
 
-    md5[MAX_MD5_SIZE+1] = '\0';
+    md5[MAX_MD5_SIZE] = '\0';
 
     pclose(fp);
 
-    pipe_write(FD_WRITE, md5);
+    sprintf(res.filename, path);
+    sprintf(res.md5, md5);
+    res.slave_id = getpid();
 
+    write_pipe(FD_WRITE, md5);
 
+    return 0;
 }
