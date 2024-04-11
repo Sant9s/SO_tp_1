@@ -66,24 +66,20 @@ char *create_shared_memory(const char *shm_name, int *shm_fd) {
     return shmp;
 }
 
-void read_shared_memory(sem_t *sem1, sem_t *sem2, char *shm) {
-    int length = 0;
 
-    while (1) {
-        sem_wait(sem2);
-        sem_wait(sem1);
-        while(shm[length] != '\n' && shm[length] != '\0') {
-            int i = strlen(shm + length) + 1;
-            if (i > 1) {
-                printf("%s\n", shm + length);
-            }
-            length++;
-        }
+int main(int argc, char* argv[]){           // recieves shrmeme 
+    // sera necesario el sem_unlink()??
 
-        if (shm[length] == '\t') {
-            sem_post(sem1);
-            break;
-        }
-        sem_post(sem1);
+    char sem_memory_name[3];
+    if(argc > 1){
+        char* sem_name = argv[1];
     }
+    else{                                   // no parameters recieved
+
+    }
+    
+
+
+
+
 }
