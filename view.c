@@ -18,11 +18,17 @@ int main(int argc, char *argv[]) {
 
     int shm_fd;
 
-    if (argv > 1) {
+    if (argc > 1) {                         // checks if shm recieved by parameter
         shm = create_shared_memory(argv[1], &shm_fd);
-    }
-    else {
+    }   
+    else {                                  // checks if shm is piped
         read_pipe(0, shm_name);
+        if(shm_name[0] = '\0'){
+            // shm was neither sent by parameter nor piped, close program 
+            // PODRIAMOS MANDAR ALGUN MENSAJES DE ERROR
+            exit(1);
+        }
+        // it was piped and is now in shm_name
         shm = create_shared_memory(shm_name, &shm_fd);
     }
 
