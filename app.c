@@ -18,6 +18,7 @@
 int create_n_pipes(int n, int array[][2]);
 int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
 void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
+void initialize_shared_memory(char *shmpath, struct shmbuf);
 
 int main(int argc, char *argv[]) {
     // Verificar que se proporcionen los argumentos esperados
@@ -27,7 +28,8 @@ int main(int argc, char *argv[]) {
     }
 
     char *shmpath = argv[1];
-    FILE * result_file;
+    struct shmbuf shmbuf;
+    initialize_shared_memory(shmpath, shmbuf);
 
     // Inicializar variables y estructuras de datos necesarias
     int num_files = argc - 1;
@@ -102,7 +104,7 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
     }
 }
 
-void initialize_shared_memory(char *shmpath, char **shared_memory, sem_t **shm_mutex_sem, sem_t **switch_sem, FILE **result_file) {
+void initialize_shared_memory(char *shmpath, struct shmbuf) {
     // Crear el archivo de memoria compartida
     int shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (shared_memory_fd == -1) {
@@ -125,11 +127,11 @@ void initialize_shared_memory(char *shmpath, char **shared_memory, sem_t **shm_m
 
     sleep(2);
 
-    if (sem_init(&shmp->sem1, 1, 0) == -1) {
+    if (sem_open(&shmp->sem1, 1) == SEM_FAILED) {
         perror("Error al inicializar el semáforo 1");
         exit(EXIT_FAILURE);
     }
-    if (sem_init(&shmp->sem2, 1, 0) == -1) {
+    if (sem_open(&shmp->sem2, 0) == SEM_FAILED) {
         perror("Error al inicializar el semáforo 2");
         exit(EXIT_FAILURE);
     }
