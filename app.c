@@ -16,9 +16,9 @@
 
 
 int create_n_pipes(int n, int array[][2]);
-int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
-void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
-void initialize_shared_memory(char *shmpath, struct shmbuf);
+int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd);
+void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd);
+void initialize_shared_memory(int shm_fd, char *shmpath, struct shmbuf);
 
 int main(int argc, char *argv[]) {
     // Verificar que se proporcionen los argumentos esperados
@@ -27,9 +27,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    int shm_fd;
     char *shmpath = argv[1];
     struct shmbuf shmbuf;
-    initialize_shared_memory(shmpath, shmbuf);
+    initialize_shared_memory(shm_fd, shmpath, shmbuf);
 
     // Inicializar variables y estructuras de datos necesarias
     int num_files = argc - 1;
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
     create_n_pipes(num_slaves, slave_to_parent_pipe);
 
     // Crear esclavos
-    create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe);
+    create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
 
     // Distribuir archivos entre los esclavos
     for (int i = 0; i < num_slaves; i++) {
@@ -70,14 +71,14 @@ int create_n_pipes(int n, int fd_array[][2]) {
     return 0;
 }
 
-int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
+int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd) {
     for (int i = 0; i < n; i++) {
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
             perror("Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
-            set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe);
+            set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
             char *args[] = {"./slave.elf", NULL};
             execve(args[0], args, NULL);
             exit(EXIT_FAILURE);
@@ -91,10 +92,12 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
     return 0;
 }
 
-void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]){
+void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd){
     for (int i = 0; i < n; i++) {
         close(parent_to_slave_pipe[i][1]);
         close(slave_to_parent_pipe[i][0]);
+
+        close(shm_fd);
         
         dup2(parent_to_slave_pipe[i][0], STDIN_FILENO);
         close(parent_to_slave_pipe[i][0]);
@@ -104,9 +107,9 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
     }
 }
 
-void initialize_shared_memory(char *shmpath, struct shmbuf) {
+void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf) {
     // Crear el archivo de memoria compartida
-    int shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+    shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (shared_memory_fd == -1) {
         perror("Error al crear el archivo de memoria compartida");
         exit(EXIT_FAILURE);
