@@ -1,4 +1,3 @@
-#include "utils.h"
 #include "pipes.h"
 #include "pshm_ucase.h"
 
@@ -19,11 +18,17 @@ int main(int argc, char *argv[]) {
 
     int shm_fd;
 
-    if (argv > 1) {
+    if (argc > 1) {                         // checks if shm recieved by parameter
         shm = create_shared_memory(argv[1], &shm_fd);
-    }
-    else {
+    }   
+    else {                                  // checks if shm is piped
         read_pipe(0, shm_name);
+        if(shm_name[0] = '\0'){
+            // shm was neither sent by parameter nor piped, close program 
+            // PODRIAMOS MANDAR ALGUN MENSAJES DE ERROR
+            exit(1);
+        }
+        // it was piped and is now in shm_name
         shm = create_shared_memory(shm_name, &shm_fd);
     }
 
@@ -32,7 +37,7 @@ int main(int argc, char *argv[]) {
     close(shm_fd);
     sem_close(sem1);
     sem_close(sem2);
-    
+
     return 0;
 }
 
@@ -44,7 +49,6 @@ sem_t *initialize_semaphore(const char *name, int value) {
     }
     return sem;
 }
-
 char *create_shared_memory(const char *shm_name, int *shm_fd) {
     *shm_fd = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (*shm_fd == -1) {
@@ -52,17 +56,22 @@ char *create_shared_memory(const char *shm_name, int *shm_fd) {
         exit(EXIT_FAILURE);
     }
 
+    ftruncate(*shm_fd, sizeof(struct shmbuf));
+    return mmap(NULL, sizeof(struct shmbuf), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
+
+    // Configurar el tamaño del archivo de memoria compartida
     if (ftruncate(*shm_fd, sizeof(struct shmbuf)) == -1) {
         perror("Error al configurar el tamaño del archivo de memoria compartida");
         exit(EXIT_FAILURE);
     }
 
+    // Mapear el archivo de memoria compartida
     char *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
     if (shmp == MAP_FAILED) {
         perror("Error al mapear el archivo de memoria compartida");
         exit(EXIT_FAILURE);
     }
-    
+
     return shmp;
 }
 
