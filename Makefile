@@ -10,7 +10,7 @@ view.elf: view.c pipes.c
 	gcc -Wall view.c pipes.c -o view.elf -std=c99 -lm -lrt -pthread -g -D_XOPEN_SOURCE=500
 
 clean:
-	rm -f slave.elf app.elf view.elf resultado.txt PVS-Studio.log report.tasks strace_out
+	rm -f slave.elf app.elf view.elf output.txt PVS-Studio.log report.tasks strace_out
 	rm -rf .config
 
 #Si tienen problemas al hacer make pvs-studio, hagan un make clean y vuelvan a intentar
