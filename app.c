@@ -23,7 +23,7 @@ void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set 
 void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
 
 int main(int argc, char *argv[]) {
-    // Verificar que se proporcionen los argumentos esperados
+    // Verify that user input file path
     if (argc < 2) {
         fprintf(stderr, "How to use: %s <archivo1> <archivo2> ...\n", argv[0]);
         return 1;
@@ -34,9 +34,9 @@ int main(int argc, char *argv[]) {
     // struct shmbuf shmbuf;
     // initialize_shared_memory(shm_fd, shmpath, shmbuf);
 
-    // Inicializar variables y estructuras de datos necesarias
+    // Initialize variables
     int num_files = argc - 1;
-    int num_slaves = num_files / 2;
+    int num_slaves = num_files / 10 + 1;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
@@ -49,21 +49,21 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Crear pipes para comunicarse con los esclavos
+    // Create pipes to comunicate with slaves
     create_n_pipes(num_slaves, parent_to_slave_pipe);
     create_n_pipes(num_slaves, slave_to_parent_pipe);
 
-    // Crear esclavos
+    // Create slaves
     create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
 
-    // Distribuir archivos iniciales entre los esclavos
+    // Distribute inicial files between slaves
     for (int i = 0; i < num_slaves; i++) {
         write_pipe(parent_to_slave_pipe[i][1], argv[files_sent++ + 1]);
     }
 
     slave_handler(num_files,num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_sent, results, result_file);
 
-    // Esperar a que todos los esclavos terminen 
+    // Wait for slaves to finish
     for (int i = 0; i < num_slaves; i++) {
         waitpid(slave_pids[i], NULL, 0);
     }
