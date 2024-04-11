@@ -7,7 +7,7 @@
 
 
 int main(){
-    Result res;
+    char res[RESULT_SIZE] = "%s - %s - %d"; // "Filename - MD5 - Slave ID"
     char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
@@ -32,11 +32,9 @@ int main(){
 
     pclose(fp);
 
-    sprintf(res.filename, path);
-    sprintf(res.md5, md5);
-    res.slave_id = getpid();
+    sprintf(res, path, md5, getpid());
 
-    write_pipe(FD_WRITE, md5);
+    write_pipe(FD_WRITE, res);
 
     return 0;
 }
