@@ -108,7 +108,7 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
 }
 
 void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf) {
-    // Crear el archivo de memoria compartida
+    
     shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (shared_memory_fd == -1) {
         perror("Error al crear el archivo de memoria compartida");
