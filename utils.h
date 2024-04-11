@@ -9,6 +9,6 @@
 #define MAX_MD5_SIZE 40
 
 #define BUFFER_SIZE 1000
-#define RESULT_SIZE 500
+#define RESULT_SIZE 20 + MAX_PATH_SIZE + MAX_MD5_SIZE
 
 #endif

@@ -7,7 +7,7 @@
 
 
 int main(){
-    char res[RESULT_SIZE] = "%s - %s - %d"; // "Filename - MD5 - Slave ID"
+    char res[RESULT_SIZE] = "%s - %s - %d\n"; // "Filename - MD5 - Slave ID"
     char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
