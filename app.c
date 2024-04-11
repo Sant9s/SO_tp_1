@@ -184,6 +184,8 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
     int max_fd = -1;
     int current_file = 0;
 
+    set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
+
     while (current_file < num_files ) {
         fd_set readfds;
         FD_ZERO(&readfds);
