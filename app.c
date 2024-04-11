@@ -11,7 +11,8 @@
 #include <string.h>
 #include "pipes.h"
 #include "utils.h"
-
+#include <ctype.h>
+#include "pshm_ucase.h"
 
 
 int create_n_pipes(int n, int array[][2]);
@@ -24,6 +25,9 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Uso: %s <archivo1> <archivo2> ...\n", argv[0]);
         return 1;
     }
+
+    char *shmpath = argv[1];
+    FILE * result_file;
 
     // Inicializar variables y estructuras de datos necesarias
     int num_files = argc - 1;
@@ -97,3 +101,54 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
         close(slave_to_parent_pipe[i][1]);
     }
 }
+
+void initialize_shared_memory(char *shmpath, char **shared_memory, sem_t **shm_mutex_sem, sem_t **switch_sem, FILE **result_file) {
+    // Crear el archivo de memoria compartida
+    int shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+    if (shared_memory_fd == -1) {
+        perror("Error al crear el archivo de memoria compartida");
+        exit(EXIT_FAILURE);
+    }
+
+    // Configurar el tamaño del archivo de memoria compartida
+    if (ftruncate(shared_memory_fd, sizeof(struct shmbuf)) == -1) {
+        perror("Error al configurar el tamaño del archivo de memoria compartida");
+        exit(EXIT_FAILURE);
+    }
+
+    // Mapear el archivo de memoria compartida
+    struct shmbuf *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+    if (shmp == MAP_FAILED) {
+        perror("Error al mapear el archivo de memoria compartida");
+        exit(EXIT_FAILURE);
+    }
+
+    sleep(2);
+
+    if (sem_init(&shmp->sem1, 1, 0) == -1) {
+        perror("Error al inicializar el semáforo 1");
+        exit(EXIT_FAILURE);
+    }
+    if (sem_init(&shmp->sem2, 1, 0) == -1) {
+        perror("Error al inicializar el semáforo 2");
+        exit(EXIT_FAILURE);
+    }
+
+    if (sem_wait(&shmp->sem1) == -1) {
+        perror("Error al esperar por el semáforo 1");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int j = 0; j < shmp->cnt; j++) {
+        shmp->buf[j] = toupper((unsigned char)shmp->buf[j]);
+    }
+
+    if (sem_post(&shmp->sem2) == -1) {
+        perror("Error al liberar el semáforo 2");
+        exit(EXIT_FAILURE);
+    }
+
+    shm_unlink(shmpath);
+
+    exit(EXIT_SUCCESS);
+};
