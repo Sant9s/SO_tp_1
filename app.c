@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     // Inicializar variables y estructuras de datos necesarias
     int num_files = argc - 1;
-    int num_slaves = num_files / 10;
+    int num_slaves = num_files / 2;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
@@ -85,9 +85,10 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
     for (int i = 0; i < n; i++) {
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
-            perror("Error -- Slave not created");
+            fprintf(stderr, "Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
+            fprintf(stderr, "dsadasda");
             set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
@@ -193,10 +194,13 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
         
         set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
 
+        fprintf(stderr, "DASDAS");
+
         if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
             perror("select");
             exit(EXIT_FAILURE);
         }
+
 
         for (int i = 0; i < num_slaves; i++) {
             if (FD_ISSET(slave_to_parent_pipe[i][0], &readfds)) {

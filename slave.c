@@ -36,6 +36,7 @@ int main(){
 
     write_pipe(FD_WRITE, res);
 
+
     close(STDOUT_FILENO);
     
     exit(EXIT_SUCCESS);
