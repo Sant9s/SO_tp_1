@@ -21,6 +21,7 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
 void initialize_shared_memory(int shm_fd, char *shmpath, struct shmbuf);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
 void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
+void set_file_config(FILE** file);
 
 int main(int argc, char *argv[]) {
     // Verify that user input file path
@@ -43,13 +44,9 @@ int main(int argc, char *argv[]) {
     pid_t slave_pids[num_slaves];
     int files_sent = 0;
     char results[num_slaves][RESULT_SIZE];
-    FILE* result_file = fopen("result.txt", "wr");
-    sprintf(result_file, "Slave PID -- MD5 -- Filename");
+    FILE* result_file = NULL;
 
-    if (result_file == NULL) {
-        perror("fopen(result.txt)");
-        exit(EXIT_FAILURE);
-    }
+    set_file_config(&result_file);
 
     // Create pipes to comunicate with slaves
     create_n_pipes(num_slaves, parent_to_slave_pipe);
@@ -81,6 +78,15 @@ int create_n_pipes(int n, int fd_array[][2]) {
         }
     }
     return 0;
+}
+
+void set_file_config(FILE** file){
+    *file = fopen("result.txt", "wr");
+    if (*file == NULL) {
+        perror("fopen(result.txt)");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(*file, "Slave PID -- MD5 -- Filename\n");
 }
 
 int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd) {
@@ -199,7 +205,6 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
             perror("select");
             exit(EXIT_FAILURE);
         }
-
 
         for (int i = 0; i < num_slaves; i++) {
             if (FD_ISSET(slave_to_parent_pipe[i][0], &readfds)) {
