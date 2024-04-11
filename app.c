@@ -141,16 +141,16 @@ void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf
     sleep(2);
 
     if (sem_open(&shmp->sem1, 1) == SEM_FAILED) {
-        perror("Error al inicializar el semáforo 1");
+        perror("Semaphore initialization error");
         exit(EXIT_FAILURE);
     }
     if (sem_open(&shmp->sem2, 0) == SEM_FAILED) {
-        perror("Error al inicializar el semáforo 2");
+        perror("Semaphore initialization error");
         exit(EXIT_FAILURE);
     }
 
     if (sem_wait(&shmp->sem1) == -1) {
-        perror("Error al esperar por el semáforo 1");
+        perror("Semaphore waiting error");
         exit(EXIT_FAILURE);
     }
 
@@ -159,7 +159,7 @@ void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf
     }
 
     if (sem_post(&shmp->sem2) == -1) {
-        perror("Error al liberar el semáforo 2");
+        perror("Freeing semaphore error");
         exit(EXIT_FAILURE);
     }
 
