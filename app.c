@@ -36,13 +36,15 @@ int main(int argc, char *argv[]) {
 
     // Initialize variables
     int num_files = argc - 1;
-    int num_slaves = num_files / 10 + 1;
+    int num_slaves = 1;
+    //int num_slaves = num_files /10 + 1;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
     int files_sent = 0;
     char results[num_slaves][RESULT_SIZE];
     FILE* result_file = fopen("result.txt", "wr");
+    sprintf(result_file, "Slave PID -- MD5 -- Filename");
 
     if (result_file == NULL) {
         perror("fopen(result.txt)");

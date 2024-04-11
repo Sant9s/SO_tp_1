@@ -7,12 +7,13 @@
 
 
 int main(){
-    char res[RESULT_SIZE] = "%s - %s - %d\n"; // "Filename - MD5 - Slave ID"
+    char res[RESULT_SIZE]; 
     char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
     char md5[MAX_MD5_SIZE + 1];     // ojo con el offset
 
+    
     if (read_pipe(FD_READ, path) == 0){
         fprintf(stderr, "pipe error");
         exit(1);
@@ -33,11 +34,7 @@ int main(){
 
     pclose(fp);
 
-    fprintf(stderr, "%s\n", path);
-    fprintf(stderr, "%s\n", md5);
-    fprintf(stderr, "%d\n", getpid());
-
-    sprintf(res, path, md5, getpid());
+    sprintf(res, "%d  %s", getpid(), md5);
 
     write_pipe(FD_WRITE, res);
 
