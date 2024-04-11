@@ -25,7 +25,7 @@ void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_sl
 int main(int argc, char *argv[]) {
     // Verificar que se proporcionen los argumentos esperados
     if (argc < 2) {
-        fprintf(stderr, "Uso: %s <archivo1> <archivo2> ...\n", argv[0]);
+        fprintf(stderr, "How to use: %s <archivo1> <archivo2> ...\n", argv[0]);
         return 1;
     }
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 int create_n_pipes(int n, int fd_array[][2]) {
     for (int i = 0; i < n; i++) {
         if (pipe(fd_array[i]) == -1) {
-            perror("Error al crear el pipe");
+            perror("Pipe creation error");
             return -1;
         }
     }
@@ -85,10 +85,9 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
     for (int i = 0; i < n; i++) {
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
-            fprintf(stderr, "Error -- Slave not created");
+            perror("Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
-            fprintf(stderr, "dsadasda");
             set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
@@ -122,20 +121,20 @@ void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf
     
     shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (shared_memory_fd == -1) {
-        perror("Error al crear el archivo de memoria compartida");
+        perror("Shared memory file creation error");
         exit(EXIT_FAILURE);
     }
 
     // Configurar el tamaño del archivo de memoria compartida
     if (ftruncate(shared_memory_fd, sizeof(struct shmbuf)) == -1) {
-        perror("Error al configurar el tamaño del archivo de memoria compartida");
+        perror("Size of shared memory file error");
         exit(EXIT_FAILURE);
     }
 
     // Mapear el archivo de memoria compartida
     struct shmbuf *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
     if (shmp == MAP_FAILED) {
-        perror("Error al mapear el archivo de memoria compartida");
+        perror("Shared memory file mapping error");
         exit(EXIT_FAILURE);
     }
 
@@ -193,8 +192,6 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
         int max_fd = -1;
         
         set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
-
-        fprintf(stderr, "DASDAS");
 
         if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
             perror("select");
