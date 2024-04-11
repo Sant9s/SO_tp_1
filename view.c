@@ -1,4 +1,3 @@
-#include "utils.h"
 #include "pipes.h"
 #include "pshm_ucase.h"
 
@@ -32,7 +31,7 @@ int main(int argc, char *argv[]) {
     close(shm_fd);
     sem_close(sem1);
     sem_close(sem2);
-    
+
     return 0;
 }
 
@@ -44,7 +43,6 @@ sem_t *initialize_semaphore(const char *name, int value) {
     }
     return sem;
 }
-
 char *create_shared_memory(const char *shm_name, int *shm_fd) {
     *shm_fd = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (*shm_fd == -1) {
@@ -52,34 +50,43 @@ char *create_shared_memory(const char *shm_name, int *shm_fd) {
         exit(EXIT_FAILURE);
     }
 
+    ftruncate(*shm_fd, sizeof(struct shmbuf));
+    return mmap(NULL, sizeof(struct shmbuf), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
+
+    // Configurar el tamaño del archivo de memoria compartida
     if (ftruncate(*shm_fd, sizeof(struct shmbuf)) == -1) {
         perror("Error al configurar el tamaño del archivo de memoria compartida");
         exit(EXIT_FAILURE);
     }
 
+    // Mapear el archivo de memoria compartida
     char *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
     if (shmp == MAP_FAILED) {
         perror("Error al mapear el archivo de memoria compartida");
         exit(EXIT_FAILURE);
     }
-    
+
     return shmp;
 }
 
+void read_shared_memory(sem_t *sem1, sem_t *sem2, char *shm) {
+    int length = 0;
 
-int main(int argc, char* argv[]){           // recieves shrmeme 
-    // sera necesario el sem_unlink()??
+    while (1) {
+        sem_wait(sem2);
+        sem_wait(sem1);
+        while(shm[length] != '\n' && shm[length] != '\0') {
+            int i = strlen(shm + length) + 1;
+            if (i > 1) {
+                printf("%s\n", shm + length);
+            }
+            length++;
+        }
 
-    char sem_memory_name[3];
-    if(argc > 1){
-        char* sem_name = argv[1];
+        if (shm[length] == '\t') {
+            sem_post(sem1);
+            break;
+        }
+        sem_post(sem1);
     }
-    else{                                   // no parameters recieved
-
-    }
-    
-
-
-
-
 }
