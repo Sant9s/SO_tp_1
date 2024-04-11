@@ -79,7 +79,7 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
             return -1;
         }else if (slave_pid[i] == 0) {
             set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
-            char *args[] = {"./slave.elf", NULL};
+            char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
             exit(EXIT_FAILURE);
         }
