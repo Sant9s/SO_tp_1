@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include "pshm_ucase.h"
 
-#define NUM_SLAVES 1
+#define NUM_SLAVES 4
 
 
 int create_n_pipes(int n, int array[][2]);
@@ -253,7 +253,8 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
     
     fd_set readfds;
     int max_fd = -1;
-    int current_file = num_slaves;
+    //int current_file = num_slaves;
+    int current_file = 0;
 
     set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
 
