@@ -18,6 +18,7 @@ int main(){
         ready = read_pipe(STDIN_FILENO, path);
         if (ready == -1) {
             perror("pipe_read");
+            fprintf(stderr, "pipe_read");
             exit(EXIT_FAILURE);
         }
         

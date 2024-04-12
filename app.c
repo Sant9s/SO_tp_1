@@ -82,6 +82,7 @@ int create_n_pipes(int n, int fd_array[][2]) {
     for (int i = 0; i < n; i++) {
         if (pipe(fd_array[i]) == -1) {
             perror("Pipe creation error");
+            fprintf(stderr, "Pipe creation error");
             return -1;
         }
     }
@@ -98,6 +99,7 @@ void set_file_config(FILE** file){
     *file = fopen("result.txt", "wr");
     if (*file == NULL) {
         perror("fopen(result.txt)");
+        fprintf(stderr, "fopen(result.txt)");
         exit(EXIT_FAILURE);
     }
     fprintf(*file, "Slave PID -- MD5 -- Filename\n");
@@ -108,6 +110,7 @@ int create_n_slaves(int num_slaves, pid_t slave_pid[], int parent_to_slave_pipe[
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
             perror("Error -- Slave not created");
+            fprintf(stderr, "Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
             set_pipe_environment(num_slaves, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
@@ -185,6 +188,8 @@ void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf
 
     if (sem_post(&shmp->sem2) == -1) {
         perror("Freeing semaphore error");
+        fprintf(stderr, "Freeing semaphore error");
+
         exit(EXIT_FAILURE);
     }
 
@@ -220,6 +225,7 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
 
         if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
             perror("select");
+            fprintf(stderr, "select");
             exit(EXIT_FAILURE);
         }
 
@@ -228,6 +234,7 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
                 int bytes_read = read_pipe(slave_to_parent_pipe[i][0], results[i]);
                 if (bytes_read < 0) {
                     perror("read");
+                    fprintf(stderr, "read");
                     exit(EXIT_FAILURE);
                 } else if (bytes_read == 0) {
                     close(slave_to_parent_pipe[i][0]);
@@ -235,11 +242,9 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
                 } else {
                     fprintf(result_file, "%s", results[i]);
                     fflush(result_file);
-                    
-                    if (*files_sent < num_files) {
-                        write_pipe(parent_to_slave_pipe[i][1], argv[(*files_sent)++ +1]);
-                    }
-
+                if (*files_sent < num_files) {
+                    write_pipe(parent_to_slave_pipe[i][1], argv[(*files_sent)++ +1]);
+                }
                     current_file++;
                 }
             }
