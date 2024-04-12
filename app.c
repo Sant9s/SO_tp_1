@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include "pshm_ucase.h"
 
-#define NUM_SLAVES 4
+#define NUM_SLAVES 5
 
 
 int create_n_pipes(int n, int array[][2]);
@@ -162,17 +162,32 @@ void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_p
     }
 }
 
-int distribute_initial_files(int argc, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
+// int distribute_initial_files(int argc, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
     
-    int total_files_to_process = argc - 1;
+//     int total_files_to_process = argc - 1;
 
+//     int files_assigned = 1;
+//     for(int i=0; i < 2 && i*NUM_SLAVES < total_files_to_process; i++){
+//         for(int child_index=0; child_index < NUM_SLAVES && i*NUM_SLAVES+child_index < total_files_to_process; child_index++){
+//             write_pipe(parent_to_slave_pipe[child_index][1], argv[files_assigned++]);
+//         }
+//     }
+
+    
+//     return files_assigned;
+// }
+
+int distribute_initial_files(int argc, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
     int files_assigned = 1;
-    for(int i=0; i < 2 && i*NUM_SLAVES < total_files_to_process; i++){
-        for(int child_index=0; child_index < NUM_SLAVES && i*NUM_SLAVES+child_index < total_files_to_process; child_index++){
-            write_pipe(parent_to_slave_pipe[child_index][1], argv[files_assigned++]);
+    if (NUM_SLAVES <= argc-1) {
+        for (int i = 0; i < NUM_SLAVES; i++) {
+        write_pipe(parent_to_slave_pipe[i][1], argv[files_assigned++]);
+        }
+    } else {
+        for (int i = 0; i < argc-1; i++) {
+            write_pipe(parent_to_slave_pipe[i][1], argv[files_assigned++]);
         }
     }
-
     
     return files_assigned;
 }
