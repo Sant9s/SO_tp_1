@@ -21,7 +21,6 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
 void initialize_shared_memory(int shm_fd, char *shmpath, struct shmbuf);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
 void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
-void close_pipes_that_are_not_mine(int num_slaves, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int my_index);
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 void set_file_config(FILE** file);
 
@@ -104,17 +103,6 @@ void set_file_config(FILE** file){
     fprintf(*file, "Slave PID -- MD5 -- Filename\n");
 }
 
-void close_pipes_that_are_not_mine(int num_slaves, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int my_index){
-    for(int i=0; i < num_slaves; i++){
-        if(i!=my_index){
-            for(int j=0; j<2; j++){
-                close(parent_to_slave_pipe[i][j]);
-                close(slave_to_parent_pipe[i][j]);
-            }
-        }
-    }
-}
-
 int create_n_slaves(int num_slaves, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int shm_fd) {
     for (int i = 0; i < num_slaves; i++) {
         slave_pid[i] = fork();
@@ -122,7 +110,6 @@ int create_n_slaves(int num_slaves, pid_t slave_pid[], int parent_to_slave_pipe[
             perror("Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
-            close_pipes_that_are_not_mine(num_slaves, parent_to_slave_pipe, slave_to_parent_pipe, i);
             set_pipe_environment(num_slaves, parent_to_slave_pipe, slave_to_parent_pipe, shm_fd);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
