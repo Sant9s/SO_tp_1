@@ -44,7 +44,7 @@ int main(int argc, const char *argv[]) {
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
-    int files_sent = 0;                 // ver porque me tira el warning
+    // int files_sent = 0;                 // lo usaremos con shared memory
     char results[num_slaves][RESULT_SIZE];
     FILE* result_file = NULL;
     int files_assigned;

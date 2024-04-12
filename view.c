@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     }   
     else {                                  // checks if shm is piped
         read_pipe(0, shm_name);
-        if(shm_name[0] = '\0'){
+        if(shm_name[0] == '\0'){
             // shm was neither sent by parameter nor piped, close program 
             // PODRIAMOS MANDAR ALGUN MENSAJES DE ERROR
             exit(1);
