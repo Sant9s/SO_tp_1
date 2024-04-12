@@ -11,4 +11,7 @@
 #define BUFFER_SIZE 1000
 #define RESULT_SIZE 20 + MAX_PATH_SIZE + MAX_MD5_SIZE
 
+#define NUM_SLAVES 5
+#define INITIAL_FILES_PER_SLAVE 2
+
 #endif
