@@ -25,7 +25,7 @@ int read_pipe(int fd, char* buff) {
     return i;
 }
 
-int write_pipe(int fd, char *buff) {
+int write_pipe(int fd, const char *buff) {
 
     int write_result = write(fd, buff, strlen(buff) + 1);
 
