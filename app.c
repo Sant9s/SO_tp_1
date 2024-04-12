@@ -14,8 +14,6 @@
 #include <ctype.h>
 #include "pshm_ucase.h"
 
-#define NUM_SLAVES 5
-
 
 int create_n_pipes(int n, int array[][2]);
 int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
@@ -40,8 +38,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize variables
     int num_files = argc - 1;
-    int num_slaves = NUM_SLAVES;
-    //int num_slaves = num_files/10 + 1;
+    int num_slaves = num_files/10 + 1;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
@@ -65,7 +62,7 @@ int main(int argc, char *argv[]) {
     //     write_pipe(parent_to_slave_pipe[i][1], argv[files_sent++ + 1]);
     // }
 
-    files_assigned = distribute_initial_files(argc, argv, parent_to_slave_pipe, slave_to_parent_pipe);
+    files_assigned = distribute_initial_files(argc, argv, parent_to_slave_pipe, slave_to_parent_pipe, num_slaves);
 
     slave_handler(argc,num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file);
     fclose(result_file);
@@ -118,7 +115,7 @@ int create_n_slaves(int num_slaves, pid_t slave_pid[], int parent_to_slave_pipe[
             fprintf(stderr, "Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
-            close_pipes_that_are_not_mine(parent_to_slave_pipe, slave_to_parent_pipe, i);
+            close_pipes_that_are_not_mine(parent_to_slave_pipe, slave_to_parent_pipe, i, num_slaves);
             set_pipe_environment(num_slaves, parent_to_slave_pipe, slave_to_parent_pipe);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
@@ -151,8 +148,8 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
     }
 }
 
-void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index){
-    for(int i=0; i<NUM_SLAVES; i++){
+void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves){
+    for(int i=0; i<num_slaves; i++){
         if(i!=my_index){
             for(int j=0; j<2; j++){
                 close(parent_to_child_pipe[i][j]);
@@ -177,10 +174,10 @@ void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_p
 //     return files_assigned;
 // }
 
-int distribute_initial_files(int argc, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
+int distribute_initial_files(int argc, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves) {
     int files_assigned = 1;
-    if (NUM_SLAVES <= argc-1) {
-        for (int i = 0; i < NUM_SLAVES; i++) {
+    if (num_slaves <= argc-1) {
+        for (int i = 0; i < num_slaves; i++) {
         write_pipe(parent_to_slave_pipe[i][1], argv[files_assigned++]);
         }
     } else {
