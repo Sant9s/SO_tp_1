@@ -20,18 +20,20 @@ int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], in
 void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
 void initialize_shared_memory(int shm_fd, char *shmpath, struct shmbuf);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
-void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
+void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 void set_file_config(FILE** file);
+int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves);
+void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
     // Verify that user input file path
     if (argc < 2) {
         fprintf(stderr, "How to use: %s <archivo1> <archivo2> ...\n", argv[0]);
         return 1;
     }
 
-    int shm_fd = 0;
+    // int shm_fd = 0;
     // char *shmpath = argv[1];
     // struct shmbuf shmbuf;
     // initialize_shared_memory(shm_fd, shmpath, shmbuf);
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
-    int files_sent = 0;
+    int files_sent = 0;                 // ver porque me tira el warning
     char results[num_slaves][RESULT_SIZE];
     FILE* result_file = NULL;
     int files_assigned;
@@ -260,7 +262,7 @@ void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set 
     }
 }
 
-void slave_handler(int num_files, int num_slaves, char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
+void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
 int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
     
     fd_set readfds;
