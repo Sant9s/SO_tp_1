@@ -1,5 +1,6 @@
 #include "pipes.h"
 #include "pshm_ucase.h"
+#include "utils.h"
 
 sem_t *initialize_semaphore(const char *name, int value);
 char *create_shared_memory(const char *shm_name, int *shm_fd);
