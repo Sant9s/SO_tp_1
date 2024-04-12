@@ -24,7 +24,7 @@ void slave_handler(int num_files, int num_slaves, const char *argv[], int parent
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 void set_file_config(FILE** file);
 int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves);
-void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
+void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
 
 int main(int argc, const char *argv[]) {
     // Verify that user input file path
@@ -45,7 +45,7 @@ int main(int argc, const char *argv[]) {
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
     // int files_sent = 0;                 // lo usaremos con shared memory
-    char results[num_slaves][RESULT_SIZE];
+    char results[num_files][RESULT_SIZE];
     FILE* result_file = NULL;
     int files_assigned;
 
@@ -59,14 +59,10 @@ int main(int argc, const char *argv[]) {
     // Create slaves
     create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe);
 
-    // Distribute inicial files between slaves
-    // for (int i = 0; i < num_slaves; i++) {
-    //     write_pipe(parent_to_slave_pipe[i][1], argv[files_sent++ + 1]);
-    // }
-
     files_assigned = distribute_initial_files(num_files, argv, parent_to_slave_pipe, slave_to_parent_pipe, num_slaves);
 
     slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file);
+    
     fclose(result_file);
 
     // Wait for slaves to finish
@@ -82,8 +78,8 @@ int main(int argc, const char *argv[]) {
     return 0;
 }
 
-int create_n_pipes(int num_slaves, int fd_array[][2]) {
-    for (int i = 0; i < num_slaves; i++) {
+int create_n_pipes(int n, int fd_array[][2]) {
+    for (int i = 0; i < n; i++) {
         if (pipe(fd_array[i]) == -1) {
             perror("Pipe creation error");
             fprintf(stderr, "Pipe creation error");
@@ -106,26 +102,26 @@ void set_file_config(FILE** file){
         fprintf(stderr, "fopen(result.txt)");
         exit(EXIT_FAILURE);
     }
-    fprintf(*file, "Slave PID -- MD5 -- Filename\n");
+    fprintf(*file, "N° -- Slave PID -- MD5 -- Filename\n");
 }
 
-int create_n_slaves(int num_slaves, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
-    for (int i = 0; i < num_slaves; i++) {
+int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]) {
+    for (int i = 0; i < n; i++) {
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
             perror("Error -- Slave not created");
             fprintf(stderr, "Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
-            close_pipes_that_are_not_mine(parent_to_slave_pipe, slave_to_parent_pipe, i, num_slaves);
-            set_pipe_environment(num_slaves, parent_to_slave_pipe, slave_to_parent_pipe);
+            close_unused_pipes(parent_to_slave_pipe, slave_to_parent_pipe, i, n);
+            set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
             exit(EXIT_FAILURE);
         }
     }
 
-    for(int i=0; i < num_slaves; i++){
+    for(int i=0; i < n; i++){
         close(parent_to_slave_pipe[i][0]);
         close(slave_to_parent_pipe[i][1]);
     }
@@ -150,13 +146,13 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
     }
 }
 
-void close_pipes_that_are_not_mine(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves){
+void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves){
     for(int i=0; i<num_slaves; i++){
         if(i!=my_index){
-            for(int j=0; j<2; j++){
-                close(parent_to_child_pipe[i][j]);
-                close(child_to_parent_pipe[i][j]);
-            }
+            close(parent_to_child_pipe[i][FD_READ]);
+            close(child_to_parent_pipe[i][FD_READ]);
+            close(parent_to_child_pipe[i][FD_WRITE]);
+            close(child_to_parent_pipe[i][FD_WRITE]);
         }
     }
 }
@@ -263,16 +259,15 @@ void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set 
 }
 
 void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
-int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
+int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file) {
     
     fd_set readfds;
     int max_fd = -1;
-    //int current_file = num_slaves;
     int current_file = 0;
 
     set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
 
-    while (current_file < num_files ) {
+    while (current_file < num_files) {
         fd_set readfds;
         FD_ZERO(&readfds);
         int max_fd = -1;
@@ -296,11 +291,11 @@ int *files_sent, char results[][RESULT_SIZE],  FILE *result_file) {
                     close(slave_to_parent_pipe[i][0]);
                     FD_CLR(slave_to_parent_pipe[i][0], &readfds);
                 } else {
-                    fprintf(result_file, "%s", results[i]);
+                    fprintf(result_file, "%d° - %s", current_file + 1, results[i]);
                     fflush(result_file);
-                if (*files_sent <= num_files) {
-                    write_pipe(parent_to_slave_pipe[i][1], argv[(*files_sent)++]);
-                }
+                    if (*files_assigned <= num_files) {
+                        write_pipe(parent_to_slave_pipe[i][1], argv[(*files_assigned)++]);
+                    }
                     current_file++;
                 }
             }
