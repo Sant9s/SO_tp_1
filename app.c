@@ -19,17 +19,21 @@ int create_n_pipes(int n, int array[][2]);
 int create_n_slaves(int n, pid_t slave_pids[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
 void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]);
 // void initialize_shared_memory(int shm_fd, char *shmpath, struct shmbuf);
-int initialize_shared_memory(void ** mem_pointer);
+// int initialize_shared_memory(void ** mem_pointer);
+typedef int semaphore;
+int initialize_shared_memory(char **shared_memory, sem_t **shm_mutex_sem);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
 void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
+
 void set_file_config(FILE** file);
 int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves);
 void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
-void uninitialize_shared_memory(void * shm_ptr, int shm_fd);
+void uninitialize_shared_memory(sem_t *shm_mutex_sem, int shm_fd);
 
 
 int main(int argc, const char *argv[]) {
+
     // Verify that user input file path
     if (argc < 2) {
         fprintf(stderr, "How to use: %s <file1> <fil2> ...\n", argv[0]);
@@ -39,9 +43,8 @@ int main(int argc, const char *argv[]) {
     // shared memory stuff
     shm_unlink(SHARED_MEMORY_NAME);         // unlink any possible semaphores and shared memory from otrer excecutions
     sem_t *shm_mutex_sem;
-    sem_t *switch_sem;
     char *shared_memory;
-    int *view_opened = 0;
+    int shm_fd = initialize_shared_memory(&shared_memory, &shm_mutex_sem);
 
 
     // Initialize variables
@@ -54,7 +57,6 @@ int main(int argc, const char *argv[]) {
     char results[num_files][RESULT_SIZE];
     FILE* result_file = NULL;
     int files_assigned;
-    void *shm_ptr;
 
 
 
@@ -79,7 +81,7 @@ int main(int argc, const char *argv[]) {
 
     slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file);
 
-    // uninitialize_shared_memory(shm_ptr, shm_fd);
+    uninitialize_shared_memory(shm_mutex_sem, shm_fd);
 
     
     fclose(result_file);
@@ -206,46 +208,81 @@ int distribute_initial_files(int num_files, const char *argv[], int parent_to_sl
     return files_assigned;
 }
 
-int initialize_shared_memory(void ** mem_pointer){
-    int shared_memory_fd = shm_open("./shared_memory", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+int initialize_shared_memory(char **shared_memory, sem_t **shm_mutex_sem){
+    int shared_memory_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO);
+    
     if (shared_memory_fd == -1) {
         perror("Shared memory file creation error");
         exit(EXIT_FAILURE);
     }
 
     // Configurar el tamaño del archivo de memoria compartida
-    if (ftruncate(shared_memory_fd, 1048576) == -1) {
+    if (ftruncate(shared_memory_fd, SHM_SIZE) == -1) {
         perror("Size of shared memory file error");
         exit(EXIT_FAILURE);
     }
 
-
-    //maps the shared memory into the process's available address
-    void * shm_ptr = mmap(NULL, 1048576, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);      // 1048576 = 1MB 
-    if (shm_ptr == MAP_FAILED) {
-        perror("Shared mem mapping failed");
-        exit(1);
+        // Mapear el archivo de memoria compartida
+    *shared_memory = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+    if (*shared_memory == MAP_FAILED) {
+        perror("Shared memory file mapping error");
+        exit(EXIT_FAILURE);
     }
 
-    // clears shared memory
-    memset(shm_ptr, 0, 1048576);
+    sleep(2);
 
-    (*mem_pointer) = shm_ptr;
+    *shm_mutex_sem = sem_open(SHARED_MEMORY_NAME, O_CREAT, S_IRUSR | S_IWUSR, 1);
+    if(*shm_mutex_sem == SEM_FAILED) {
+        perror("Semaphore was not initialized");
+        exit(EXIT_FAILURE);
+    }
+
+    
 
     return shared_memory_fd;
 
+
 }
 
-
-void uninitialize_shared_memory(void * shm_ptr, int shm_fd){
-    if(munmap(shm_ptr, SHM_SIZE) == -1){
-        perror("munmap failed");
-        exit(1);
-    }
-
+void uninitialize_shared_memory(sem_t *shm_mutex_sem, int shm_fd){
+    sem_close(shm_mutex_sem);
+    sem_unlink(SHARED_MEMORY_NAME);
     close(shm_fd);
     shm_unlink(SHARED_MEMORY_NAME);
 }
+
+// int initialize_shared_memory(void ** mem_pointer){
+//     int shared_memory_fd = shm_open("./shared_memory", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+//     if (shared_memory_fd == -1) {
+//         perror("Shared memory file creation error");
+//         exit(EXIT_FAILURE);
+//     }
+
+//     // Configurar el tamaño del archivo de memoria compartida
+//     if (ftruncate(shared_memory_fd, 1048576) == -1) {
+//         perror("Size of shared memory file error");
+//         exit(EXIT_FAILURE);
+//     }
+
+
+//     //maps the shared memory into the process's available address
+//     void * shm_ptr = mmap(NULL, 1048576, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);      // 1048576 = 1MB 
+//     if (shm_ptr == MAP_FAILED) {
+//         perror("Shared mem mapping failed");
+//         exit(1);
+//     }
+
+//     // clears shared memory
+//     memset(shm_ptr, 0, 1048576);
+
+//     (*mem_pointer) = shm_ptr;
+
+//     return shared_memory_fd;
+
+// }
+
+
+
 
 // void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf) {
     
