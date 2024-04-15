@@ -1,38 +1,23 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include "pipes.h"
+// This is a personal academic project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+
 #include "utils.h"
+#include "pipes.h"
 
-
-int read_pipe(int fd, char* buff) {
-    int i = 0;
-    char read_char[1] = {1};
-
-    while (read_char[0] != 0 && i < MAX_PATH_SIZE) {
-        int read_result  = read(fd, read_char, 1);
-
-        if (read_result == -1) {
-            perror("read");
-            exit(EXIT_FAILURE); 
-        }
-
-        buff[i++] = read_char[0];
-    }
-
-    buff[i] = 0;
-    return i;
+int write_pipe(int fd, const char *buff){
+    return write(fd, buff, strlen(buff)+1);
 }
 
-int write_pipe(int fd, const char *buff) {
+int read_pipe(int fd, char *buff){
+    int i=0;
+    char last_charater_read[1];
+    last_charater_read[0]=1;
 
-    int write_result = write(fd, buff, strlen(buff) + 1);
-
-    if (write_result == -1) {
-        perror("write");
-        exit(EXIT_FAILURE);
+    while(last_charater_read[0]!=0 && last_charater_read[0]!='\n' && read(fd,last_charater_read,1)>0){
+        buff[i++]=last_charater_read[0];
     }
+    buff[i]=0;
 
-    return write_result;
+    return i;
 }
