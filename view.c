@@ -9,6 +9,8 @@ void read_shared_memory(sem_t *sem1, char *shm);
 
 int main(int argc, char *argv[]) {
 
+    
+
      
     sem_unlink(SHARED_MEMORY_SEM_NAME);
     
@@ -22,30 +24,33 @@ int main(int argc, char *argv[]) {
 
     int shm_fd;
 
-    if(argc != 1 && argc !=4){
-        printf("Wrong number of arguments\n");                  // aca aclarar como se usa
-        return 1;
-    }
+    // if(argc != 1 && argc !=4){
+    //     printf("Wrong number of arguments\n");                  // aca aclarar como se usa
+    //     return 1;
+    // }
+    
 
-    if (argc == 4) {                                            // shm recibido through stdin
-        shm = create_shared_memory(argv[1], &shm_fd);
+    if (argc > 1) {                                         // shm recibido through stdin
+        shm = create_shared_memory(argv[1], &shm_fd);           
+        // cuando esta inicializado aca funciona bien! (lo encuentra)
     }   
-    else {                                                       // shm recieved through a pipe
+    else {          
+        fprintf(stderr, "DSADSA");                                             // shm recieved through a pipe
         read_pipe(STDIN_FILENO, shm_name);
+        fprintf(stderr, "DSADSA2"); 
+        
+
+        // guarda en shm_name el nombre de la shared memory (HASTA ACA FUNCIONA)
         
         if(shm_name[0] == '\0'){
             // shm was neither sent by parameter nor piped, close program 
             // PODRIAMOS MANDAR ALGUN MENSAJES DE ERROR
             exit(1);
         }
-        if(shm_name[0] == '\0'){
-            fprintf(stderr, "%s", shm_name); 
-            exit(1);
-        }
           
-        
         // it was piped and is now in shm_name
         shm = create_shared_memory(shm_name, &shm_fd);
+      
                   
     }
 
@@ -66,16 +71,14 @@ sem_t *initialize_semaphore(const char *name, int value) {
     return sem;
 }
 char *create_shared_memory(const char *shm_name, int *shm_fd) {
-    *shm_fd = shm_open(shm_name, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+        fprintf(stderr, "%s\n", shm_name);
+    *shm_fd = shm_open(shm_name, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);          // este open para mi funciona mal (por el nombre)
+
     
     if (*shm_fd == -1) {
-        perror("shm_open");
+        perror("shm_open error");
         exit(EXIT_FAILURE);
     }
-
-
-    ftruncate(*shm_fd, sizeof(struct shmbuf));
-    return mmap(NULL, sizeof(struct shmbuf), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
 
     // Configurar el tamaño del archivo de memoria compartida
     if (ftruncate(*shm_fd, sizeof(struct shmbuf)) == -1) {
@@ -112,5 +115,6 @@ void read_shared_memory(sem_t *shm_sem, char *shm) {
             break;
         }
         sem_post(shm_sem);
+        
     }
 }

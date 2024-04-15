@@ -29,7 +29,7 @@ void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 void set_file_config(FILE** file);
 int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves);
 void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
-void uninitialize_shared_memory(sem_t *shm_mutex_sem, int shm_fd);
+void free_shared_memory(sem_t *shm_mutex_sem, int shm_fd);
 
 
 int main(int argc, const char *argv[]) {
@@ -41,7 +41,7 @@ int main(int argc, const char *argv[]) {
     }
 
     // shared memory stuff
-    shm_unlink(SHARED_MEMORY_NAME);         // unlink any possible semaphores and shared memory from otrer excecutions
+    shm_unlink(SHARED_MEMORY_NAME);         // unlink any possible semaphores and shared memory from otrer excecutions  
     sem_t *shm_mutex_sem;
     char *shared_memory;
     int shm_fd = initialize_shared_memory(&shared_memory, &shm_mutex_sem);
@@ -81,7 +81,7 @@ int main(int argc, const char *argv[]) {
 
     slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file);
 
-    uninitialize_shared_memory(shm_mutex_sem, shm_fd);
+    free_shared_memory(shm_mutex_sem, shm_fd);
 
     
     fclose(result_file);
@@ -229,14 +229,13 @@ int initialize_shared_memory(char **shared_memory, sem_t **shm_mutex_sem){
         exit(EXIT_FAILURE);
     }
 
-    sleep(2);
-
-    *shm_mutex_sem = sem_open(SHARED_MEMORY_NAME, O_CREAT, S_IRUSR | S_IWUSR, 1);
+    *shm_mutex_sem = sem_open(SHARED_MEMORY_SEM_NAME, O_CREAT, S_IRUSR | S_IWUSR, 1);
     if(*shm_mutex_sem == SEM_FAILED) {
         perror("Semaphore was not initialized");
         exit(EXIT_FAILURE);
     }
 
+    sleep(2);
     
 
     return shared_memory_fd;
@@ -244,7 +243,7 @@ int initialize_shared_memory(char **shared_memory, sem_t **shm_mutex_sem){
 
 }
 
-void uninitialize_shared_memory(sem_t *shm_mutex_sem, int shm_fd){
+void free_shared_memory(sem_t *shm_mutex_sem, int shm_fd){
     sem_close(shm_mutex_sem);
     sem_unlink(SHARED_MEMORY_NAME);
     close(shm_fd);
