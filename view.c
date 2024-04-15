@@ -35,9 +35,9 @@ int main(int argc, char *argv[]) {
         // cuando esta inicializado aca funciona bien! (lo encuentra)
     }   
     else {          
-        fprintf(stderr, "DSADSA");                                             // shm recieved through a pipe
+         // shm recieved through a pipe
         read_pipe(STDIN_FILENO, shm_name);
-        fprintf(stderr, "DSADSA2"); 
+        
         
 
         // guarda en shm_name el nombre de la shared memory (HASTA ACA FUNCIONA)
@@ -54,7 +54,8 @@ int main(int argc, char *argv[]) {
                   
     }
 
-    read_shared_memory(shm_mutex_sem, shm);
+    
+    read_shared_memory(shm_mutex_sem, shm);             // for some reason shm is empty
 
     close(shm_fd);
     sem_close(shm_mutex_sem);
@@ -71,7 +72,6 @@ sem_t *initialize_semaphore(const char *name, int value) {
     return sem;
 }
 char *create_shared_memory(const char *shm_name, int *shm_fd) {
-        fprintf(stderr, "%s\n", shm_name);
     *shm_fd = shm_open(shm_name, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);          // este open para mi funciona mal (por el nombre)
 
     
@@ -101,8 +101,8 @@ void read_shared_memory(sem_t *shm_sem, char *shm) {
 
     while (1) {
         sem_wait(shm_sem);
-        while(shm[length] != '\n' && shm[length] != '\0') {            // por alguna razon shm[0] == '\0' entonces tira el loop infinitamente
-           
+        
+        while(shm[length] != '\n' && shm[length] != '\0') {           
             int i = strlen(shm + length) + 1;
             if (i > 1) {
                 printf("%s\n", shm + length);
@@ -110,11 +110,11 @@ void read_shared_memory(sem_t *shm_sem, char *shm) {
             length += i;
         }
 
-        if (shm[length] == '\t') {
+        if (shm[length] == '\t') {                                  // no se que carajo hace aca
             sem_post(shm_sem);
             break;
         }
-        sem_post(shm_sem);
+        sem_post(shm_sem);                                         
         
     }
 }

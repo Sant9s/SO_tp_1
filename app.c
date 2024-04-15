@@ -23,7 +23,9 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
 typedef int semaphore;
 int initialize_shared_memory(char **shared_memory, sem_t **shm_mutex_sem);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
-void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file);
+void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
+int *files_assigned, char results[][RESULT_SIZE],  FILE * result_file, char *shared_memory);
+    
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 
 void set_file_config(FILE** file);
@@ -49,7 +51,7 @@ int main(int argc, const char *argv[]) {
 
     // Initialize variables
     int num_files = argc - 1;
-    int num_slaves = num_files/10 + 1;
+    int num_slaves = 3;
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
@@ -79,7 +81,7 @@ int main(int argc, const char *argv[]) {
 
     files_assigned = distribute_initial_files(num_files, argv, parent_to_slave_pipe, slave_to_parent_pipe, num_slaves);
 
-    slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file);
+    slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file, shared_memory);
 
     free_shared_memory(shm_mutex_sem, shm_fd);
 
@@ -250,99 +252,6 @@ void free_shared_memory(sem_t *shm_mutex_sem, int shm_fd){
     shm_unlink(SHARED_MEMORY_NAME);
 }
 
-// int initialize_shared_memory(void ** mem_pointer){
-//     int shared_memory_fd = shm_open("./shared_memory", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
-//     if (shared_memory_fd == -1) {
-//         perror("Shared memory file creation error");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     // Configurar el tamaño del archivo de memoria compartida
-//     if (ftruncate(shared_memory_fd, 1048576) == -1) {
-//         perror("Size of shared memory file error");
-//         exit(EXIT_FAILURE);
-//     }
-
-
-//     //maps the shared memory into the process's available address
-//     void * shm_ptr = mmap(NULL, 1048576, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);      // 1048576 = 1MB 
-//     if (shm_ptr == MAP_FAILED) {
-//         perror("Shared mem mapping failed");
-//         exit(1);
-//     }
-
-//     // clears shared memory
-//     memset(shm_ptr, 0, 1048576);
-
-//     (*mem_pointer) = shm_ptr;
-
-//     return shared_memory_fd;
-
-// }
-
-
-
-
-// void initialize_shared_memory(int shared_memory_fd, char *shmpath, struct shmbuf) {
-    
-//     shared_memory_fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
-//     if (shared_memory_fd == -1) {
-//         perror("Shared memory file creation error");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     // Configurar el tamaño del archivo de memoria compartida
-//     if (ftruncate(shared_memory_fd, sizeof(struct shmbuf)) == -1) {
-//         perror("Size of shared memory file error");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     // Mapear el archivo de memoria compartida
-//     struct shmbuf *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
-//     if (shmp == MAP_FAILED) {
-//         perror("Shared memory file mapping error");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     sleep(2);
-
-//     if (sem_open(&shmp->sem1, 1) == SEM_FAILED) {
-//         perror("Semaphore initialization error");
-//         exit(EXIT_FAILURE);
-//     }
-//     if (sem_open(&shmp->sem2, 0) == SEM_FAILED) {
-//         perror("Semaphore initialization error");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     if (sem_wait(&shmp->sem1) == -1) {
-//         perror("Semaphore waiting error");
-//         exit(EXIT_FAILURE);
-//     }
-//         dup2(parent_to_slave_pipe[i][0], STDIN_FILENO);
-//         close(parent_to_slave_pipe[i][0]);
-
-//         dup2(slave_to_parent_pipe[i][1], STDOUT_FILENO);
-//         close(slave_to_parent_pipe[i][1]);
-
-//         close(parent_to_slave_pipe[i][1]);
-//         close(slave_to_parent_pipe[i][0]);
-//     for (int j = 0; j < shmp->cnt; j++) {
-//         shmp->buf[j] = toupper((unsigned char)shmp->buf[j]);
-//     }
-
-//     if (sem_post(&shmp->sem2) == -1) {
-//         perror("Freeing semaphore error");
-//         fprintf(stderr, "Freeing semaphore error");
-
-//         exit(EXIT_FAILURE);
-//     }
-
-//     shm_unlink(shmpath);
-
-//     exit(EXIT_SUCCESS);
-// }
-
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds){
        for (int i = 0; i < num_slaves; i++) {
         if (slave_to_parent_pipe[i][0] > *max_fd) {
@@ -353,11 +262,12 @@ void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set 
 }
 
 void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
-int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file) {
+int *files_assigned, char results[][RESULT_SIZE],  FILE * result_file, char *shared_memory) {
     
     fd_set readfds;
     int max_fd = -1;
     int current_file = 0;
+    int info_length = strlen("PID: %d - %s") + MAX_MD5_SIZE + MAX_PATH_SIZE + 2;
 
     set_fd(num_slaves, slave_to_parent_pipe, &max_fd, &readfds);
 
@@ -370,23 +280,26 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file) {
 
         if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
             perror("select");
-            fprintf(stderr, "select");
             exit(EXIT_FAILURE);
         }
+
+       
 
         for (int i = 0; i < num_slaves; i++) {
             if (FD_ISSET(slave_to_parent_pipe[i][0], &readfds)) {
                 int bytes_read = read_pipe(slave_to_parent_pipe[i][0], results[i]);
                 if (bytes_read < 0) {
                     perror("read");
-                    fprintf(stderr, "read");
                     exit(EXIT_FAILURE);
                 } else if (bytes_read == 0) {
                     close(slave_to_parent_pipe[i][0]);
                     FD_CLR(slave_to_parent_pipe[i][0], &readfds);
-                } else {
-                    fprintf(result_file, "%d° - %s", current_file + 1, results[i]);
+                } else {                                                                                // there are things to read
+                    fprintf(result_file, "%d° - %s\n", current_file + 1, results[i]);                     // ej: 1°- 12736  a8f5f167f44f4964e6c998dee827110c  ./test/Heyy10.txt 
                     fflush(result_file);
+                    snprintf(shared_memory + current_file * info_length, info_length, "%s", results[i]);        // esto guarda en shared_memory la informacion de cada md5
+
+                    printf("in md5:%s\n", shared_memory + current_file * info_length);                          // verifica que lo que busco en shm esta
                     if (*files_assigned <= num_files) {
                         write_pipe(parent_to_slave_pipe[i][1], argv[(*files_assigned)++]);
                     }
@@ -395,6 +308,8 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file) {
             }
         }
     }
+
+    sprintf(shared_memory + current_file * RESULT_SIZE, "\n");      // le coloca \n al final del nombre del archivo
     for(int i=0; i < num_slaves; i++){
         write_pipe(parent_to_slave_pipe[i][1], "\0");
         close(parent_to_slave_pipe[i][1]);

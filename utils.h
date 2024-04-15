@@ -5,8 +5,8 @@
 #define FD_READ 0
 #define FD_WRITE 1
 
-#define MAX_PATH_SIZE 100
-#define MAX_MD5_SIZE 100
+#define MAX_PATH_SIZE 64
+#define MAX_MD5_SIZE 32
 #define SHM_SIZE 1048576                        // 1MB
 
 #define BUFFER_SIZE 1000
