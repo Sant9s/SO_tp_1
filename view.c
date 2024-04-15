@@ -2,59 +2,33 @@
 #include "pshm_ucase.h"
 #include "utils.h"
 
-sem_t *initialize_semaphore(const char *name, int value);
-char *create_shared_memory(const char *shm_name, int *shm_fd);
-void read_shared_memory(sem_t *sem1, char *shm);
+void initialize_semaphore(sem_t **shm_mutex_sem);
+int initialize_shared_memory(char **shm, char* shm_name);
+void read_shared_memory(sem_t *sem1, int shm_fd);
 
-
-int main(int argc, char *argv[]) {
-
-    
-
-     
-    sem_unlink(SHARED_MEMORY_SEM_NAME);
-    
-
-    char shm_name[MAX_PATH_SIZE] = {0};
+ 
+int main(int argc, char *argv[]) {     
     char *shm;
+    int shm_fd = 0;
+    char shm_name[SHM_NAME_SIZE];
+    sem_t *shm_mutex_sem;
 
-    sem_t *shm_mutex_sem = initialize_semaphore(SHARED_MEMORY_SEM_NAME, 1);
+    initialize_semaphore(&shm_mutex_sem);
 
-   
-
-    int shm_fd;
-
-    // if(argc != 1 && argc !=4){
-    //     printf("Wrong number of arguments\n");                  // aca aclarar como se usa
-    //     return 1;
-    // }
-    
-
-    if (argc > 1) {                                         // shm recibido through stdin
-        shm = create_shared_memory(argv[1], &shm_fd);           
-        // cuando esta inicializado aca funciona bien! (lo encuentra)
-    }   
-    else {          
-        fprintf(stderr, "DSADSA");                                             // shm recieved through a pipe
-        read_pipe(STDIN_FILENO, shm_name);
-        fprintf(stderr, "DSADSA2"); 
-        
-
-        // guarda en shm_name el nombre de la shared memory (HASTA ACA FUNCIONA)
-        
-        if(shm_name[0] == '\0'){
-            // shm was neither sent by parameter nor piped, close program 
-            // PODRIAMOS MANDAR ALGUN MENSAJES DE ERROR
+    if (argc > 1){
+        shm_fd = initialize_shared_memory(&shm, argv[1]);
+    }
+    else {
+        read(STDIN_FILENO, shm_name, strlen(SHARED_MEMORY_NAME));
+        if (shm_name[0] == '\0'){
+            perror("Error - Shared memory name");
             exit(1);
         }
-          
-        // it was piped and is now in shm_name
-        shm = create_shared_memory(shm_name, &shm_fd);
-      
-                  
-    }
 
-    read_shared_memory(shm_mutex_sem, shm);
+        shm_fd = initialize_shared_memory(&shm, SHARED_MEMORY_NAME);
+    }
+    
+    read_shared_memory(shm_mutex_sem, shm_fd);
 
     close(shm_fd);
     sem_close(shm_mutex_sem);
@@ -62,59 +36,48 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-sem_t *initialize_semaphore(const char *name, int value) {
-    sem_t *sem = sem_open(name, O_CREAT, 0666, value);
-    if (sem == SEM_FAILED) {
-        perror("sem_open");
-        exit(EXIT_FAILURE);
-    }
-    return sem;
-}
-char *create_shared_memory(const char *shm_name, int *shm_fd) {
-        fprintf(stderr, "%s\n", shm_name);
-    *shm_fd = shm_open(shm_name, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);          // este open para mi funciona mal (por el nombre)
-
-    
-    if (*shm_fd == -1) {
-        perror("shm_open error");
+int initialize_shared_memory(char **shared_memory, char* shm_name) {
+    int shared_memory_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR); // TRAMPA SHM NAME se recibe por paremetro.
+    if (shared_memory_fd == -1) {
+        perror("Shared memory file creation error");
         exit(EXIT_FAILURE);
     }
 
-    // Configurar el tamaño del archivo de memoria compartida
-    if (ftruncate(*shm_fd, sizeof(struct shmbuf)) == -1) {
-        perror("Error al configurar el tamaño del archivo de memoria compartida");
+    if (ftruncate(shared_memory_fd, SHM_SIZE) == -1) {
+        perror("Size of shared memory file error");
         exit(EXIT_FAILURE);
     }
 
-    // Mapear el archivo de memoria compartida
-    char *shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0);
-    if (shmp == MAP_FAILED) {
-        perror("Error al mapear el archivo de memoria compartida");
+    *shared_memory = mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+    if (*shared_memory == MAP_FAILED) {
+        perror("Shared memory file mapping error");
         exit(EXIT_FAILURE);
     }
 
-    return shmp;
+    return shared_memory_fd;
 }
 
-void read_shared_memory(sem_t *shm_sem, char *shm) {
-    int length = 0;
-
-    while (1) {
-        sem_wait(shm_sem);
-        while(shm[length] != '\n' && shm[length] != '\0') {            // por alguna razon shm[0] == '\0' entonces tira el loop infinitamente
-           
-            int i = strlen(shm + length) + 1;
-            if (i > 1) {
-                printf("%s\n", shm + length);
-            }
-            length += i;
-        }
-
-        if (shm[length] == '\t') {
-            sem_post(shm_sem);
-            break;
-        }
-        sem_post(shm_sem);
-        
+void initialize_semaphore(sem_t **shm_mutex_sem) {
+    *shm_mutex_sem = sem_open(SHARED_MEMORY_SEM_NAME, O_RDWR, S_IRUSR | S_IWUSR, 0);
+    if (*shm_mutex_sem == SEM_FAILED) {
+        perror("Semaphore was not initialized");
+        exit(EXIT_FAILURE);
     }
+}
+
+void read_shared_memory(sem_t *shm_sem, int shm_fd) {
+  char buff[BUFFER_SIZE] = "";
+  char result[BUFFER_SIZE];
+  int i = 0;
+
+  while (1) {
+    i++;
+    sem_wait(shm_sem);
+    int j;
+    for (j = 0; read(shm_fd, buff, 1) > 0 && *buff != '\n'; j++) {
+      result[j] = buff[0];
+    }
+    result[j] = '\0';
+    fprintf(stdout, "%d - %s\n", i, result);
+  }
 }

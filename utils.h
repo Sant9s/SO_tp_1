@@ -8,7 +8,7 @@
 #define MAX_PATH_SIZE 100
 #define MAX_MD5_SIZE 100
 #define SHM_SIZE 1048576                        // 1MB
-
+#define SHM_NAME_SIZE 20
 #define BUFFER_SIZE 1000
 #define RESULT_SIZE 20 + MAX_PATH_SIZE + MAX_MD5_SIZE
 
