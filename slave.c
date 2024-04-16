@@ -42,7 +42,6 @@ int main(){
     }
 
     close(STDOUT_FILENO);
-    // close(STDIN_FILENO);
     
     exit(EXIT_SUCCESS);
 

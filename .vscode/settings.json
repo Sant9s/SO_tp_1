@@ -1,5 +1,6 @@
 {
   "files.associations": {
-    "pipes.h": "c"
+    "pipes.h": "c",
+    "utils.h": "c"
   }
 }
