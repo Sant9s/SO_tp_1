@@ -67,17 +67,18 @@ void initialize_semaphore(sem_t **shm_mutex_sem) {
 
 void read_shared_memory(sem_t *shm_sem, int shm_fd) {
     fprintf(stdout, "N° -- Slave PID -- MD5 -- Filename\n");
-    char buff[BUFFER_SIZE] = "";
+    char buff[1] = {1};
     char result[BUFFER_SIZE];
     int i = 0;
 
     while (1) {
         i++;
         sem_wait(shm_sem);
-        int j;
+        int j; 
         for (j = 0; read(shm_fd, buff, 1) > 0 && *buff != '\n'; j++) {
             result[j] = buff[0];
         }
+        if (strcmp(result, END_OF_VIEW) == 0) break;
         result[j] = '\0';
         fprintf(stdout, "%d - %s\n", i, result);
     }

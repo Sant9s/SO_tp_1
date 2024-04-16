@@ -74,6 +74,9 @@ int main(int argc, const char *argv[]) {
 
     fclose(result_file);
 
+    write(shm_fd, END_OF_VIEW, strlen(END_OF_VIEW));
+    sem_post(shm_mutex_sem);
+
     // Wait for slaves to finish
     for (int i = 0; i < num_slaves; i++) {
         int w = waitpid(slave_pids[i], NULL, 0);

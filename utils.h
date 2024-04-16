@@ -18,6 +18,7 @@
 #define SHARED_MEMORY_NAME "/shared_memory"
 #define SHARED_MEMORY_SEM_NAME "/shm_sem"
 #define HASH_SEM_NAME "/hash_sem"
+#define END_OF_VIEW "THIS_IS_THE_END"
 
 
 #endif
