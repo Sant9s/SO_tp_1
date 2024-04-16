@@ -7,22 +7,23 @@ int initialize_shared_memory(char **shm, char* shm_name);
 void read_shared_memory(sem_t *sem1, int shm_fd);
 
  
-int main(int argc, char *argv[]) {     
+int main(int argc, char *argv[]) {    
+
+    // Shared Memory
     char *shm;
     int shm_fd = 0;
     char shm_name[SHM_NAME_SIZE];
     sem_t *shm_mutex_sem;
 
-    if (argc > 1){ // Me pasaron por parametro la shm
+    if (argc > 1){    // Me pasaron por parametro la shm
         shm_fd = initialize_shared_memory(&shm, argv[1]);
     }
-    else { // Me pipearon la shm
+    else {            // Me pipearon la shm
         read(STDIN_FILENO, shm_name, strlen(SHARED_MEMORY_NAME));
         if (shm_name[0] == '\0'){
             perror("Error - Shared memory name");
             exit(1);
         }
-
         shm_fd = initialize_shared_memory(&shm, shm_name);
     }
 

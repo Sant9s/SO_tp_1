@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
-    // shared memory stuff 
+    // Shared memory
     sem_t *shm_mutex_sem;
     char *shared_memory;
 
@@ -56,6 +56,9 @@ int main(int argc, const char *argv[]) {
     FILE* result_file = NULL;
     int files_assigned;
 
+    // Sleep dos segundos
+    sleep(2);
+
     initialize_slave_pids(num_slaves, slave_pids);
     set_file_config(&result_file);
 
@@ -66,11 +69,10 @@ int main(int argc, const char *argv[]) {
     // Create slaves
     create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe);
 
+    // Assign files to slaves
     files_assigned = distribute_initial_files(num_files, argv, parent_to_slave_pipe, slave_to_parent_pipe, num_slaves);
 
     slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file, shm_fd, shm_mutex_sem);
-
-    sleep(2); // 2 segundos
 
     fclose(result_file);
 
@@ -253,15 +255,15 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
                     close(slave_to_parent_pipe[i][0]);
                     FD_CLR(slave_to_parent_pipe[i][0], &readfds);
                 } else {
-                    //Meto resultado a result.txt
+                    // Add result to result.txt
                     fprintf(result_file, "%d° - %s", current_file + 1, results[i]);
                     fflush(result_file);
 
-                    //Escribo el resultado en la shared memory
+                    // Add result to shm
                     write(shm_fd, results[i], strlen(results[i]));
                     sem_post(shm_mutex_sem);
 
-                    //Le mando el siguiente archivo a procesar al proximo esclavo
+                    // Assign next file to process to a slave
                     if (*files_assigned <= num_files) {
                         write_pipe(parent_to_slave_pipe[i][1], argv[(*files_assigned)++]);
                     }
@@ -270,6 +272,7 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
             }
         }
     }
+    
     for(int i=0; i < num_slaves; i++){
         write_pipe(parent_to_slave_pipe[i][1], "\0");
         close(parent_to_slave_pipe[i][1]);

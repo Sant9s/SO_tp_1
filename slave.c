@@ -7,7 +7,8 @@
 
 
 int main(){
-    char process_info[RESULT_SIZE];                 // the slave pid, mds5 and filename is stored here
+    
+    char process_info[RESULT_SIZE];              
     char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
     char command[MAX_PATH_SIZE - 2 + strlen(start_command)];
