@@ -79,7 +79,7 @@ void read_shared_memory(sem_t *shm_sem, int shm_fd) {
         for (j = 0; read(shm_fd, buff, 1) > 0 && *buff != '\n'; j++) {
             result[j] = buff[0];
         }
-        if (strcmp(result, END_OF_VIEW) == 0) break;
+        if (strcmp(result, END_OF_VIEW) == 0) break; 
         result[j] = '\0';
         fprintf(stdout, "%d - %s\n", i, result);
     }
