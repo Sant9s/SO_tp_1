@@ -73,7 +73,7 @@ int main(int argc, const char *argv[]) {
 
     sem_post(shm_mutex_sem);
 
-    sleep(2); // 2 segundos
+    sleep(2);
 
     fclose(result_file);
 
@@ -81,7 +81,7 @@ int main(int argc, const char *argv[]) {
     for (int i = 0; i < num_slaves; i++) {
         int w = waitpid(slave_pids[i], NULL, 0);
         if (w == -1) {
-        perror("waitpid");
+        fprintf(stderr, "waitpid");
         exit(EXIT_FAILURE);
         }
     }
@@ -95,6 +95,7 @@ int create_n_pipes(int n, int fd_array[][2]) {
     for (int i = 0; i < n; i++) {
         if (pipe(fd_array[i]) == -1) {
             perror("Pipe creation error");
+            fprintf(stderr, "Pipe creation error");
             return -1;
         }
     }
@@ -111,6 +112,7 @@ void set_file_config(FILE** file){
     *file = fopen("result.txt", "wr");
     if (*file == NULL) {
         perror("fopen(result.txt)");
+        fprintf(stderr, "fopen(result.txt)");
         exit(EXIT_FAILURE);
     }
     fprintf(*file, "N° -- Slave PID -- MD5 -- Filename\n");
@@ -121,6 +123,7 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
         slave_pid[i] = fork();
         if (slave_pid[i] == -1) {
             perror("Error -- Slave not created");
+            fprintf(stderr, "Error -- Slave not created");
             return -1;
         }else if (slave_pid[i] == 0) {
             close_unused_pipes(parent_to_slave_pipe, slave_to_parent_pipe, i, n);
@@ -240,6 +243,7 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
 
         if (select(max_fd + 1, &readfds, NULL, NULL, NULL) == -1) {
             perror("select");
+            fprintf(stderr, "select");
             exit(EXIT_FAILURE);
         }
 
@@ -248,6 +252,7 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
                 int bytes_read = read_pipe(slave_to_parent_pipe[i][0], results[i]);
                 if (bytes_read < 0) {
                     perror("read");
+                    fprintf(stderr, "read");
                     exit(EXIT_FAILURE);
                 } else if (bytes_read == 0) {
                     close(slave_to_parent_pipe[i][0]);

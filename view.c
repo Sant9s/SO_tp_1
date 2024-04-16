@@ -13,6 +13,8 @@ int main(int argc, char *argv[]) {
     char shm_name[SHM_NAME_SIZE];
     sem_t *shm_mutex_sem;
 
+    initialize_semaphore(&shm_mutex_sem);
+
     if (argc > 1){
         shm_fd = initialize_shared_memory(&shm, argv[1]);
     }
@@ -23,10 +25,9 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        shm_fd = initialize_shared_memory(&shm, shm_name);
+        shm_fd = initialize_shared_memory(&shm, SHARED_MEMORY_NAME);
     }
-
-    initialize_semaphore(&shm_mutex_sem);
+    
     read_shared_memory(shm_mutex_sem, shm_fd);
 
     close(shm_fd);
@@ -57,9 +58,9 @@ int initialize_shared_memory(char **shared_memory, char* shm_name) {
 }
 
 void initialize_semaphore(sem_t **shm_mutex_sem) {
-    *shm_mutex_sem = sem_open(SHARED_MEMORY_SEM_NAME, 0);
+    *shm_mutex_sem = sem_open(SHARED_MEMORY_SEM_NAME, O_RDWR, S_IRUSR | S_IWUSR, 0);
     if (*shm_mutex_sem == SEM_FAILED) {
-        perror("Semaphore was not initialized2");
+        perror("Semaphore was not initialized");
         exit(EXIT_FAILURE);
     }
 }
