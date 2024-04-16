@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "pipes.h": "c",
-    "utils.h": "c"
+    "utils.h": "c",
+    "pshm_ucase.h": "c"
   }
 }

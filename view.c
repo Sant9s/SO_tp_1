@@ -1,6 +1,16 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+
 #include "pipes.h"
-#include "pshm_ucase.h"
 #include "utils.h"
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <semaphore.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 void initialize_semaphore(sem_t **shm_mutex_sem);
 int initialize_shared_memory(char **shm, char* shm_name);

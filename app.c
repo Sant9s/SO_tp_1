@@ -1,3 +1,7 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,7 +16,9 @@
 #include "pipes.h"
 #include "utils.h"
 #include <ctype.h>
-#include "pshm_ucase.h"
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 int create_n_pipes(int n, int array[][2]);
