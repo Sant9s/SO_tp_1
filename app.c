@@ -54,7 +54,7 @@ int main(int argc, const char *argv[]) {
 
     // Initialize variables
     int num_files = argc - 1;
-    int num_slaves = num_files/10 + 1;
+    int num_slaves = num_files/10 + 1; 
     int parent_to_slave_pipe[num_slaves][2];
     int slave_to_parent_pipe[num_slaves][2];
     pid_t slave_pids[num_slaves];
@@ -63,7 +63,7 @@ int main(int argc, const char *argv[]) {
     int files_assigned;
 
     // Sleep dos segundos
-    sleep(2);
+    // sleep(2);
 
     initialize_slave_pids(num_slaves, slave_pids);
     set_file_config(&result_file);
@@ -140,22 +140,22 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
     }
 
     for(int i=0; i < n; i++){
-        close(parent_to_slave_pipe[i][0]);
-        close(slave_to_parent_pipe[i][1]);
+        close(parent_to_slave_pipe[i][FD_READ]);
+        close(slave_to_parent_pipe[i][FD_WRITE]);
     }
     return 0;
 }
 
 void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]){
     for (int i = 0; i < n; i++) {
-        close(parent_to_slave_pipe[i][1]);
-        close(slave_to_parent_pipe[i][0]);
+        close(parent_to_slave_pipe[i][FD_WRITE]);
+        close(slave_to_parent_pipe[i][FD_READ]);
         
-        dup2(parent_to_slave_pipe[i][0], STDIN_FILENO);
-        close(parent_to_slave_pipe[i][0]);
+        dup2(parent_to_slave_pipe[i][FD_READ], STDIN_FILENO);
+        close(parent_to_slave_pipe[i][FD_READ]);
 
-        dup2(slave_to_parent_pipe[i][1], STDOUT_FILENO);
-        close(slave_to_parent_pipe[i][1]);
+        dup2(slave_to_parent_pipe[i][FD_WRITE], STDOUT_FILENO);
+        close(slave_to_parent_pipe[i][FD_WRITE]);
     }
 }
 
@@ -172,14 +172,10 @@ void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[
 
 int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves) {
     int files_assigned = 1;
-    if (num_slaves <= num_files) {
-        for (int i = 0; i < num_slaves; i++) {
-        write_pipe(parent_to_slave_pipe[i][1], argv[files_assigned++]);
-        }
-    } else {
-        for (int i = 0; i < num_files; i++) {
-            write_pipe(parent_to_slave_pipe[i][1], argv[files_assigned++]);
-        }
+    int n = num_slaves <= num_files ? num_slaves : num_files; 
+    
+    for (int i = 0; i < n; i++) {
+        write_pipe(parent_to_slave_pipe[i][FD_WRITE], argv[files_assigned++]);
     }
     
     return files_assigned;
@@ -223,10 +219,10 @@ void free_shared_memory(sem_t *shm_mutex_sem, int shm_fd){
 
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds){
        for (int i = 0; i < num_slaves; i++) {
-        if (slave_to_parent_pipe[i][0] > *max_fd) {
-            *max_fd = slave_to_parent_pipe[i][0];
+        if (slave_to_parent_pipe[i][FD_READ] > *max_fd) {
+            *max_fd = slave_to_parent_pipe[i][FD_READ];
         }
-        FD_SET(slave_to_parent_pipe[i][0], readfds);
+        FD_SET(slave_to_parent_pipe[i][FD_READ], readfds);
     }
 }
 
@@ -252,14 +248,14 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
         }
 
         for (int i = 0; i < num_slaves; i++) {
-            if (FD_ISSET(slave_to_parent_pipe[i][0], &readfds)) {
-                int bytes_read = read_pipe(slave_to_parent_pipe[i][0], results[i]);
+            if (FD_ISSET(slave_to_parent_pipe[i][FD_READ], &readfds)) {
+                int bytes_read = read_pipe(slave_to_parent_pipe[i][FD_READ], results[i]);
                 if (bytes_read < 0) {
                     perror("read");
                     exit(EXIT_FAILURE);
                 } else if (bytes_read == 0) {
-                    close(slave_to_parent_pipe[i][0]);
-                    FD_CLR(slave_to_parent_pipe[i][0], &readfds);
+                    close(slave_to_parent_pipe[i][FD_READ]);
+                    FD_CLR(slave_to_parent_pipe[i][FD_READ], &readfds);
                 } else {
                     // Add result to result.txt
                     fprintf(result_file, "%d° - %s", current_file + 1, results[i]);
@@ -271,7 +267,7 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
 
                     // Assign next file to process to a slave
                     if (*files_assigned <= num_files) {
-                        write_pipe(parent_to_slave_pipe[i][1], argv[(*files_assigned)++]);
+                        write_pipe(parent_to_slave_pipe[i][FD_WRITE], argv[(*files_assigned)++]);
                     }
                     current_file++;
                 }
@@ -280,8 +276,8 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
     }
     
     for(int i=0; i < num_slaves; i++){
-        write_pipe(parent_to_slave_pipe[i][1], "\0");
-        close(parent_to_slave_pipe[i][1]);
-        close(slave_to_parent_pipe[i][0]);
+        write_pipe(parent_to_slave_pipe[i][FD_WRITE], "\0");
+        close(parent_to_slave_pipe[i][FD_WRITE]);
+        close(slave_to_parent_pipe[i][FD_READ]);
     }
 }
