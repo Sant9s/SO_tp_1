@@ -27,12 +27,13 @@ void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_par
 void initialize_semaphore(sem_t **shm_mutex_sem);
 int initialize_shared_memory(char **shared_memory);
 void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set * readfds);
-void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file, int shm_fd, sem_t *shm_mutex_sem);
+void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int *files_sent, char result[][RESULT_SIZE],  FILE *resultado_file, int shm_fd, sem_t *shm_mutex_sem, int named_pipe_fd);
 void initialize_slave_pids(int num_slaves, pid_t slave_pids[]);
 void set_file_config(FILE** file);
 int distribute_initial_files(int num_files, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], int num_slaves);
 void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves);
 void free_shared_memory(sem_t *shm_mutex_sem, int shm_fd);
+int create_pipe_with_name(char path[]);
 
 
 int main(int argc, const char *argv[]) {
@@ -71,6 +72,7 @@ int main(int argc, const char *argv[]) {
     // Create pipes to comunicate with slaves
     create_n_pipes(num_slaves, parent_to_slave_pipe);
     create_n_pipes(num_slaves, slave_to_parent_pipe);
+    int named_pipe_fd = create_pipe_with_name(NAMED_PIPE);
 
     // Create slaves
     create_n_slaves(num_slaves, slave_pids, parent_to_slave_pipe, slave_to_parent_pipe);
@@ -78,7 +80,7 @@ int main(int argc, const char *argv[]) {
     // Assign files to slaves
     files_assigned = distribute_initial_files(num_files, argv, parent_to_slave_pipe, slave_to_parent_pipe, num_slaves);
 
-    slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file, shm_fd, shm_mutex_sem);
+    slave_handler(num_files, num_slaves, argv,parent_to_slave_pipe,slave_to_parent_pipe, &files_assigned, results, result_file, shm_fd, shm_mutex_sem, named_pipe_fd);
 
     fclose(result_file);
 
@@ -93,10 +95,22 @@ int main(int argc, const char *argv[]) {
         exit(EXIT_FAILURE);
         }
     }
+
+    
+    close(named_pipe_fd);
+    unlink(NAMED_PIPE);
     
     free_shared_memory(shm_mutex_sem, shm_fd);
 
     return 0;
+}
+
+int create_pipe_with_name(char path[]){
+    if (mkfifo(path, 0666) == -1) {
+        //error
+    }
+    int fd = open(path, O_WRONLY);
+    return fd;
 }
 
 int create_n_pipes(int n, int fd_array[][2]) {
@@ -132,7 +146,7 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
             return -1;
         }else if (slave_pid[i] == 0) {
             close_unused_pipes(parent_to_slave_pipe, slave_to_parent_pipe, i, n);
-            set_pipe_environment(n, parent_to_slave_pipe, slave_to_parent_pipe);
+            set_pipe_environment(i, parent_to_slave_pipe, slave_to_parent_pipe);
             char *args[] = {"./slave", NULL};
             execve(args[0], args, NULL);
             exit(EXIT_FAILURE);
@@ -146,17 +160,15 @@ int create_n_slaves(int n, pid_t slave_pid[], int parent_to_slave_pipe[][2], int
     return 0;
 }
 
-void set_pipe_environment(int n, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]){
-    for (int i = 0; i < n; i++) {
-        close(parent_to_slave_pipe[i][FD_WRITE]);
-        close(slave_to_parent_pipe[i][FD_READ]);
-        
-        dup2(parent_to_slave_pipe[i][FD_READ], STDIN_FILENO);
-        close(parent_to_slave_pipe[i][FD_READ]);
+void set_pipe_environment(int my_index, int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2]){
+    close(parent_to_slave_pipe[my_index][FD_WRITE]);
+    close(slave_to_parent_pipe[my_index][FD_READ]);
+    
+    dup2(parent_to_slave_pipe[my_index][FD_READ], STDIN_FILENO);
+    close(parent_to_slave_pipe[my_index][FD_READ]);
 
-        dup2(slave_to_parent_pipe[i][FD_WRITE], STDOUT_FILENO);
-        close(slave_to_parent_pipe[i][FD_WRITE]);
-    }
+    dup2(slave_to_parent_pipe[my_index][FD_WRITE], STDOUT_FILENO);
+    close(slave_to_parent_pipe[my_index][FD_WRITE]);
 }
 
 void close_unused_pipes(int parent_to_child_pipe[][2], int child_to_parent_pipe[][2], int my_index, int num_slaves){
@@ -227,7 +239,7 @@ void set_fd(int num_slaves, int slave_to_parent_pipe[][2], int * max_fd, fd_set 
 }
 
 void slave_handler(int num_files, int num_slaves, const char *argv[], int parent_to_slave_pipe[][2], int slave_to_parent_pipe[][2], 
-int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd, sem_t *shm_mutex_sem) {
+int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd, sem_t *shm_mutex_sem, int named_pipe_fd) {
     
     fd_set readfds;
     int max_fd = -1;
@@ -264,6 +276,9 @@ int *files_assigned, char results[][RESULT_SIZE],  FILE *result_file, int shm_fd
                     // Add result to shm
                     write(shm_fd, results[i], strlen(results[i]));
                     sem_post(shm_mutex_sem);
+
+                    // Add to view2.c
+                    write(named_pipe_fd, results[i], strlen(results[i]));
 
                     // Assign next file to process to a slave
                     if (*files_assigned <= num_files) {

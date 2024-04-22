@@ -11,7 +11,7 @@
 
 
 int main(){
-    
+
     char process_info[RESULT_SIZE];              
     char path[MAX_PATH_SIZE];
     char* start_command = "md5sum %s";
@@ -29,7 +29,6 @@ int main(){
         sprintf(command, start_command, path); // store "md5sum + (path)" in command
 
         FILE *fp = popen(command, "r"); // r means read
-
         if(fp == NULL){
             fprintf(stderr, "popen error");
             exit(EXIT_FAILURE);

@@ -16,6 +16,7 @@
 #define SHARED_MEMORY_NAME "/shared_memory"
 #define SHARED_MEMORY_SEM_NAME "/shm_sem"
 #define END_OF_VIEW "END_OF_VIEW"
+#define NAMED_PIPE "/my_named_pipe"
 
 
 #endif

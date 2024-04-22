@@ -91,6 +91,6 @@ void read_shared_memory(sem_t *shm_sem, int shm_fd) {
         }
         if (strcmp(result, END_OF_VIEW) == 0) break; 
         result[j] = '\0';
-        fprintf(stdout, "%d - %s\n", i, result);
+        fprintf(stdout, "%d° - %s\n", i, result);
     }
 }
